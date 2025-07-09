@@ -1,35 +1,67 @@
-// Import everything from the three.js library
-import * as THREE from "three";
+import * as THREE from "three"; // Import everything from the three.js library
 
-// Select the <canvas> element with class "webgl" in the HTML
-const canvas = document.querySelector("canvas.webgl");
+const canvas = document.querySelector("canvas.webgl"); // Select the <canvas> element with class "webgl" in the HTML
 
-// Create a new scene — the container for all 3D objects, lights, and cameras
-const scene = new THREE.Scene();
+const scene = new THREE.Scene(); // Create a new scene — the container for all 3D objects, lights, and cameras
 
-/*
- * Geometry
- * BoxGeometry creates a cube or cuboid shape.
- * Arguments: width (1), height (1), depth (1) in world units.
- * Units are arbitrary but consistent — e.g., 1 unit can be 1 meter.
- */
-const geometry = new THREE.BoxGeometry(1, 1, 1);
+const group = new THREE.Group(); // Create a new group to hold multiple objects together
+
+scene.add(group); // Add the group to the scene
 
 /*
- * Material
- * MeshBasicMaterial is a simple material that does not respond to lighting.
- * Here, it's set to pure red using hexadecimal (0xff0000).
- */
-const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-
-/*
- * Mesh
+ * Meshes(cubes)
  * A mesh is the combination of geometry (shape) and material (appearance).
  */
-const mesh = new THREE.Mesh(geometry, material);
+const cube1 = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1), // Create a new BoxGeometry with dimensions width 1, height 1, depth 1
+  new THREE.MeshBasicMaterial({ color: 0xff0000 }) // MeshBasicMaterial is a simple material that does not respond to lighting.
+);
+cube1.position.x = -2;
+group.add(cube1); // Add the first cube to the group
 
-// Add the mesh (red cube) to the scene so it can be rendered
-scene.add(mesh);
+const cube2 = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1), // Create a new BoxGeometry with dimensions width 1, height 1, depth 1
+  new THREE.MeshBasicMaterial({ color: 0x00ff00 }) // MeshBasicMaterial is a simple material that does not respond to lighting.
+);
+cube2.position.x = 0;
+group.add(cube2); // Add the second cube to the group
+
+const cube3 = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1), // Create a new BoxGeometry with dimensions width 1, height 1, depth 1
+  new THREE.MeshBasicMaterial({ color: 0x0000ff }) // MeshBasicMaterial is a simple material that does not respond to lighting.
+);
+cube3.position.x = 2;
+group.add(cube3); // Add the third cube to the group
+
+/**
+ * Axes helper
+ * The AxesHelper is a visual aid that shows the orientation of the scene.
+ * It displays three colored lines representing the X (red), Y (green), and Z (blue) axes.
+ * The size of the axes is set to 2 units.
+ */
+const axesHelper = new THREE.AxesHelper(2);
+scene.add(axesHelper); // Add the axes helper to the scene for reference
+
+/**
+ * Positioning the Mesh
+ * The position property of the mesh allows us to move it in 3D space.
+ * The set method takes three arguments: x, y, and z coordinates.
+ */
+group.position.set(0.7, -0.6, 1);
+
+/** * Scaling the Mesh
+ * The scale property allows us to change the size of the mesh.
+ * The set method takes three arguments: scale factor for x, y, and z axes
+ */
+group.scale.set(0.2, 0.5, 0.7); // Scale the mesh along the X axis by a factor of 2
+
+/**
+ * Rotation
+ * The rotation property allows us to rotate the mesh around the X, Y, and Z axes
+ * The set method takes three arguments: rotation in radians for x, y, and z axes.
+ */
+group.rotation.set(0.5 * Math.PI, 0.5 * Math.PI, 0.5 * Math.PI); // Rotate the mesh around the X axis by 576.25 degrees (2 * Math.PI radians), Y axis by 576.25 degrees (2 * Math.PI radians), and Z axis by 180 degrees (Math.PI radians)
+group.rotation.reorder("YXZ"); // Change the order of rotation to YXZ, which can affect the final orientation of the mesh
 
 /*
  * Sizes
@@ -54,8 +86,9 @@ const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height);
 // By default, the camera looks at (0, 0, 0), and the cube is centered there
 camera.position.z = 3;
 
-// Add the camera to the scene
-scene.add(camera);
+// camera.lookAt(group.position); // Make the camera look at the mesh (the red cube)
+
+scene.add(camera); // Add the camera to the scene
 
 /*
  * Renderer
