@@ -25,11 +25,31 @@ const doorAlphaTexture = loadTexture("/textures/door/alpha.jpg");
 const doorAmbientOcclusionTexture = loadTexture(
   "/textures/door/ambientOcclusion.jpg"
 );
-const doorColorTexture = loadTexture("/textures/door/color.jpg");
 const doorHeightTexture = loadTexture("/textures/door/height.jpg");
 const doorMetalnessTexture = loadTexture("/textures/door/metalness.jpg");
 const doorNormalTexture = loadTexture("/textures/door/normal.jpg");
 const doorRoughnessTexture = loadTexture("/textures/door/roughness.jpg");
+const doorColorTexture = loadTexture("/textures/door/color.jpg");
+// rendering repetition of the texture. The last pixel
+doorColorTexture.repeat.x = 2; // horizontaly
+doorColorTexture.repeat.y = 3; // verticaly
+// repeat the whole texture(horizontaly and verticaly) and not just the last pixel
+doorColorTexture.wrapS = THREE.RepeatWrapping; // horizontally
+doorColorTexture.wrapT = THREE.RepeatWrapping; // vertically
+// mirror effect
+// doorColorTexture.wrapS = THREE.MirroredRepeatWrapping; // horizontally
+// doorColorTexture.wrapT = THREE.MirroredRepeatWrapping; // vertically
+
+// doorColorTexture.rotation = Math.PI * 0.25; // rotate the texture by 45 degrees
+// rotating point in the middle of the texture
+doorColorTexture.offset.x = 0.5; // horizontally
+doorColorTexture.offset.y = 0.5; // vertically
+
+// minifying the texture
+doorColorTexture.minFilter = THREE.LinearFilter; // smoothing the texture
+// magnifying the texture
+doorColorTexture.magFilter = THREE.NearestFilter; // no smoothing (minecraft style)
+// doorColorTexture.generateMipmaps = false; // disable mipmaps only when minFilter & magFilter are set to NearestFilter
 
 /**
  * Base
