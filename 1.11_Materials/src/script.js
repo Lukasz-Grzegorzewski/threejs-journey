@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import GUI from "lil-gui";
+
+// Debug
+const gui = new GUI();
 
 /**
  * Base
@@ -68,7 +72,11 @@ gradientTexture.minFilter = THREE.NearestFilter;
 gradientTexture.magFilter = THREE.NearestFilter;
 materialSphere4.gradientMap = gradientTexture;
 // TORUS3
-const materialTorus3 = new THREE.MeshBasicMaterial();
+const materialTorus3 = new THREE.MeshStandardMaterial();
+materialTorus3.metalness = 0.7;
+materialTorus3.roughness = 0.2;
+gui.add(materialTorus3, "metalness").min(0).max(1).step(0.0001);
+gui.add(materialTorus3, "roughness").min(0).max(1).step(0.0001);
 // SPHERE5
 const materialSphere5 = new THREE.MeshBasicMaterial();
 
