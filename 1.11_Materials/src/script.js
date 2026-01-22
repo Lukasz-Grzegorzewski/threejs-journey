@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import GUI from "lil-gui";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 // Debug
 const gui = new GUI();
@@ -75,8 +76,14 @@ materialSphere4.gradientMap = gradientTexture;
 const materialTorus3 = new THREE.MeshStandardMaterial();
 materialTorus3.metalness = 0.7;
 materialTorus3.roughness = 0.2;
+materialTorus3.map = doorColorTexture;
+materialTorus3.aoMap = doorAmbientOcclusionTexture;
+materialTorus3.aoMapIntensity = 1;
+materialTorus3.displacementMap = doorHeightTexture;
+
 gui.add(materialTorus3, "metalness").min(0).max(1).step(0.0001);
 gui.add(materialTorus3, "roughness").min(0).max(1).step(0.0001);
+
 // SPHERE5
 const materialSphere5 = new THREE.MeshBasicMaterial();
 
@@ -168,6 +175,14 @@ pointLight.position.x = 2;
 pointLight.position.y = 3;
 pointLight.position.z = 0;
 scene.add(pointLight);
+
+// Environment map
+const rgbeLoader = new RGBELoader();
+rgbeLoader.load("/textures/environmentMap/2k.hdr", (environmentMap) => {
+  environmentMap.mapping = THREE.EquirectangularReflectionMapping;
+  scene.background = environmentMap;
+  scene.environment = environmentMap;
+});
 
 /**
  * Sizes
