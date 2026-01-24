@@ -26,6 +26,18 @@ debugObject.createBox = () => {
 };
 gui.add(debugObject, "createBox");
 
+debugObject.reset = () => {
+  for (const object of objectsToUpdate) {
+    // Remove body
+    world.removeBody(object.body);
+
+    // Remove mesh
+    scene.remove(object.mesh);
+  }
+  objectsToUpdate.splice(0, objectsToUpdate.length);
+};
+gui.add(debugObject, "reset");
+
 /**
  * Base
  */
@@ -34,6 +46,23 @@ const canvas = document.querySelector("canvas.webgl");
 
 // Scene
 const scene = new THREE.Scene();
+
+/**
+ * Audio
+ */
+const hitSound = new Audio("/sounds/hit.mp3");
+
+const playHitSound = (collision) => {
+  const strength = collision.contact.getImpactVelocityAlongNormal();
+
+  if (strength > 1) {
+    hitSound.currentTime = 0;
+    console.log("hitSound.volume", hitSound.volume);
+
+    hitSound.volume = Math.min(strength / 10, 1);
+    hitSound.play();
+  }
+};
 
 /**
  * Textures
@@ -191,6 +220,7 @@ const createSphere = (radius, position) => {
     position: new CANNON.Vec3(0, 0, 0),
     shape: shape,
   });
+  body.addEventListener("collide", playHitSound);
   body.position.copy(position);
   world.addBody(body);
 
@@ -224,6 +254,7 @@ const createBox = (width, height, depth, position) => {
     position: new CANNON.Vec3(0, 0, 0),
     shape: shape,
   });
+  body.addEventListener("collide", playHitSound);
   body.position.copy(position);
   world.addBody(body);
 
@@ -246,6 +277,11 @@ const tick = () => {
   for (const object of objectsToUpdate) {
     object.mesh.position.copy(object.body.position);
     object.mesh.quaternion.copy(object.body.quaternion);
+
+    object.body.applyLocalForce(
+      new CANNON.Vec3(-0.5, 0, 0),
+      new CANNON.Vec3(0, 0, 0),
+    );
   }
   world.step(1 / 60, deltaTime, 3);
 
