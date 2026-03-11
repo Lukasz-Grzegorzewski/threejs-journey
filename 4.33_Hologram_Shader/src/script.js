@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import GUI from "lil-gui";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import holographicVertexShader from "./shaders/holographic/vertex.glsl";
+import holographicFragmentShader from "./shaders/holographic/fragment.glsl";
 
 /**
  * Base
@@ -78,7 +80,24 @@ gui.addColor(rendererParameters, "clearColor").onChange(() => {
 /**
  * Material
  */
-const material = new THREE.MeshBasicMaterial();
+const materialParameters = { color: "#ff0000" };
+gui.addColor(materialParameters, "color").onChange(() => {
+  material.uniforms.uColor.value.set(materialParameters.color);
+});
+
+const material = new THREE.ShaderMaterial({
+  vertexShader: holographicVertexShader,
+  fragmentShader: holographicFragmentShader,
+  uniforms: {
+    uTime: new THREE.Uniform(0),
+    uColor: new THREE.Uniform(new THREE.Color(materialParameters.color)),
+  },
+  transparent: true,
+  side: THREE.DoubleSide,
+  depthWrite: false, // to make sure the holographic effect is visible on the back side of the object. Because we have transparent material, we need to disable depth writing to make sure the back side is rendered after the front side and not hidden behind it.
+  blending: THREE.AdditiveBlending, // to make the holographic effect additive, so it adds the color of the holographic effect to the color of the object instead of replacing it. This makes the holographic effect brighter and more visible.
+  // wireframe: true,
+});
 
 /**
  * Objects
@@ -109,10 +128,14 @@ gltfLoader.load("./suzanne.glb", (gltf) => {
 /**
  * Animate
  */
-const clock = new THREE.Clock();
+const clock = new THREE.Timer();
 
 const tick = () => {
-  const elapsedTime = clock.getElapsedTime();
+  clock.update();
+  const elapsedTime = clock.getElapsed();
+
+  // Update material
+  material.uniforms.uTime.value = elapsedTime;
 
   // Rotate objects
   if (suzanne) {
