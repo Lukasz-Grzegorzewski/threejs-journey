@@ -74,9 +74,91 @@ renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(sizes.pixelRatio);
 
 /**
+ * Textures
+ */
+const pictureTexture = textureLoader.load("./picture-1.png");
+
+/**
+ * Displacement
+ */
+const displacement = {};
+
+// 2D canvas
+displacement.canvas = document.createElement("canvas");
+displacement.canvas.width = 64;
+displacement.canvas.height = 64;
+displacement.canvas.style.position = "fixed";
+displacement.canvas.style.width = "128px";
+displacement.canvas.style.height = "128px";
+displacement.canvas.style.top = 0;
+displacement.canvas.style.left = 0;
+displacement.canvas.style.zIndex = 10;
+document.body.append(displacement.canvas);
+
+// Context
+displacement.context = displacement.canvas.getContext("2d");
+displacement.context.fillRect(
+  0,
+  0,
+  displacement.canvas.width,
+  displacement.canvas.height,
+);
+
+// Glow image
+displacement.glowImage = new Image();
+displacement.glowImage.src = "./glow.png";
+
+// Interactive plane
+displacement.interactivePlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(10, 10),
+  new THREE.MeshBasicMaterial({ color: "red", side: THREE.DoubleSide }),
+);
+displacement.interactivePlane.visible = false;
+scene.add(displacement.interactivePlane);
+
+// Raycaster
+displacement.raycaster = new THREE.Raycaster();
+
+// Coordinates
+displacement.screenCursor = new THREE.Vector2(9999, 9999);
+displacement.canvasCursor = new THREE.Vector2(9999, 9999);
+displacement.canvasCursorPrevious = new THREE.Vector2(9999, 9999);
+
+window.addEventListener("pointermove", (event) => {
+  displacement.screenCursor.x = (event.clientX / sizes.width) * 2 - 1; // convert 0<->vw to -1<->1
+  displacement.screenCursor.y = -(event.clientY / sizes.height) * 2 + 1; // convert vh<->0 to -1<->1
+});
+
+// Texture
+displacement.texture = new THREE.CanvasTexture(displacement.canvas);
+
+/**
  * Particles
  */
-const particlesGeometry = new THREE.PlaneGeometry(10, 10, 32, 32);
+const particlesGeometry = new THREE.PlaneGeometry(10, 10, 128, 128);
+particlesGeometry.setIndex(null);
+particlesGeometry.deleteAttribute("normal");
+
+const intensitiesArray = new Float32Array(
+  particlesGeometry.attributes.position.count,
+);
+const anglesArray = new Float32Array(
+  particlesGeometry.attributes.position.count,
+);
+
+for (let i = 0; i < particlesGeometry.attributes.position.count; i++) {
+  intensitiesArray[i] = Math.random();
+  anglesArray[i] = Math.random() * Math.PI * 2;
+}
+
+particlesGeometry.setAttribute(
+  "aIntensity",
+  new THREE.BufferAttribute(intensitiesArray, 1),
+);
+particlesGeometry.setAttribute(
+  "aAngle",
+  new THREE.BufferAttribute(anglesArray, 1),
+);
 
 const particlesMaterial = new THREE.ShaderMaterial({
   vertexShader: particlesVertexShader,
@@ -88,9 +170,13 @@ const particlesMaterial = new THREE.ShaderMaterial({
         sizes.height * sizes.pixelRatio,
       ),
     ),
+    uPictureTexture: new THREE.Uniform(pictureTexture),
+    uDisplacementTexture: new THREE.Uniform(displacement.texture),
   },
 });
+particlesMaterial.depthTest = false;
 const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+
 scene.add(particles);
 
 /**
@@ -99,6 +185,66 @@ scene.add(particles);
 const tick = () => {
   // Update controls
   controls.update();
+
+  /**
+   * Raycaster
+   */
+  displacement.raycaster.setFromCamera(displacement.screenCursor, camera);
+  const intersections = displacement.raycaster.intersectObject(
+    displacement.interactivePlane,
+  );
+  if (intersections.length) {
+    const uv = intersections[0].uv;
+
+    /** represent the cursor position from the plane to the 2d canvas
+     * Example. Currently:
+     * 2DcanvasCursor = 32(from 128) <=> PlaneMeshCursor = -0.5
+     * 2DcanvasCursor = 64(from 128) <=> PlaneMeshCursor = 0.0
+     * 2DcanvasCursor = 128(from 128) <=> PlaneMeshCursor = 1.0
+     * expectation:
+     * 2DcanvasCursor = 64(from 128) <=> PlaneMeshCursor = 64
+     *
+     */
+    displacement.canvasCursor.x = uv.x * displacement.canvas.width;
+    displacement.canvasCursor.y = (1 - uv.y) * displacement.canvas.height;
+  }
+
+  /**
+   *  Displacement
+   */
+  displacement.context.globalCompositeOperation = "source-over";
+  displacement.context.globalAlpha = 0.01;
+  displacement.context.fillRect(
+    0,
+    0,
+    displacement.canvas.width,
+    displacement.canvas.height,
+  );
+
+  // Speed alpha
+  const cursorDistance = displacement.canvasCursorPrevious.distanceTo(
+    displacement.canvasCursor,
+  );
+  displacement.canvasCursorPrevious.copy(displacement.canvasCursor);
+  const alpha = Math.min(cursorDistance * 0.1, 1);
+
+  // Draw glow
+  // set the size of the glow. 0.25 of the canvas size.
+  // If the canvas changes size the glow will change it's size automaticly
+  const glowSize = displacement.canvas.width * 0.25;
+
+  displacement.context.globalCompositeOperation = "lighten";
+  displacement.context.globalAlpha = alpha;
+  displacement.context.drawImage(
+    displacement.glowImage,
+    displacement.canvasCursor.x - glowSize * 0.5, // - glowSize * 0.5: move the glowImage half it's size to the left
+    displacement.canvasCursor.y - glowSize * 0.5, // - glowSize * 0.5: move the glowImage half it's size to the top
+    glowSize,
+    glowSize,
+  );
+
+  // Texture
+  displacement.texture.needsUpdate = true;
 
   // Render
   renderer.render(scene, camera);
