@@ -3,7 +3,10 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import CustomShaderMaterial from "three-custom-shader-material/vanilla";
 import GUI from "lil-gui";
+import slicedVertexShader from "./shaders/sliced/vertex.glsl";
+import slicedFragmentShader from "./shaders/sliced/fragment.glsl";
 
 /**
  * Base
@@ -39,6 +42,27 @@ hdrLoader.load("./aerodynamics_workshop.hdr", (environmentMap) => {
 /**
  * Sliced model
  */
+const uniforms = {
+  uSlicedStart: new THREE.Uniform(1.75),
+  uSlicedArc: new THREE.Uniform(1.25),
+};
+
+const patchMap = {
+  csm_Slice: {
+    "#include <colorspace_fragment>": `
+      #include <colorspace_fragment>
+
+      if(!gl_FrontFacing)
+        gl_FragColor = vec4(0.75, 0.15, 0.3, 1.0);
+    `,
+  },
+};
+
+gui
+  .add(uniforms.uSlicedStart, "value", -Math.PI, Math.PI, 0.001)
+  .name("uSlicedStart");
+gui.add(uniforms.uSlicedArc, "value", 0, Math.PI * 2, 0.001).name("uSlicedArc");
+
 // Geometry
 const geometry = new THREE.IcosahedronGeometry(2.5, 5);
 
@@ -50,9 +74,55 @@ const material = new THREE.MeshStandardMaterial({
   color: "#858080",
 });
 
-// Mesh
-const mesh = new THREE.Mesh(geometry, material);
-scene.add(mesh);
+const slicedMaterial = new CustomShaderMaterial({
+  // CSM
+  baseMaterial: THREE.MeshStandardMaterial,
+  vertexShader: slicedVertexShader,
+  fragmentShader: slicedFragmentShader,
+  uniforms,
+
+  // MeshStandardMaterial
+  metalness: 0.5,
+  roughness: 0.25,
+  envMapIntensity: 0.5,
+  color: "#858080",
+  patchMap,
+  side: THREE.DoubleSide,
+});
+
+const slicedDepthMaterial = new CustomShaderMaterial({
+  // CSM
+  baseMaterial: THREE.MeshDepthMaterial,
+  vertexShader: slicedVertexShader,
+  fragmentShader: slicedFragmentShader,
+  uniforms,
+  patchMap,
+
+  // MeshDepthMaterial
+  depthPacking: THREE.RGBADepthPacking,
+});
+
+// Model
+let model;
+gltfLoader.load("./gears.glb", (gltf) => {
+  model = gltf.scene;
+
+  model.traverse((child) => {
+    if (child.isMesh) {
+      if (child.name === "outerHull") {
+        child.material = slicedMaterial;
+        child.customDepthMaterial = slicedDepthMaterial;
+      } else {
+        child.material = material;
+      }
+
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+
+  scene.add(model);
+});
 
 /**
  * Plane
@@ -134,8 +204,19 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+/**
+ * turn off for debuging in fragment using < csm_FragColor = vec4(vec3(angle), 1.0); >
+ * because it gives not correct colors
+ */
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1;
+
+/**
+ * turn on for debuging in fragment using < csm_FragColor = vec4(vec3(angle), 1.0); >
+ * to get correct colors
+ */
+// renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(sizes.pixelRatio);
 
@@ -147,6 +228,9 @@ const clock = new THREE.Timer();
 const tick = () => {
   clock.update();
   const elapsedTime = clock.getElapsed();
+
+  // Update model
+  if (model) model.rotation.y = elapsedTime * 0.1;
 
   // Update controls
   controls.update();
