@@ -1,7 +1,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
+import { Brush, Evaluator, SUBTRACTION } from "three-bvh-csg";
+import CustomShaderMaterial from "three-custom-shader-material/vanilla";
 import GUI from "lil-gui";
+import terrainVertexShader from "./shaders/terrain/vertex.glsl";
+import terrainFragmentShader from "./shaders/terrain/fragment.glsl";
 
 /**
  * Base
@@ -31,13 +35,134 @@ hdrLoader.load("/spruit_sunrise.hdr", (environmentMap) => {
 });
 
 /**
- * Placeholder
+ * Terrain
  */
-const placeholder = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(2, 5),
-  new THREE.MeshPhysicalMaterial(),
+// Geometry
+const geometry = new THREE.PlaneGeometry(10, 10, 500, 500);
+geometry.deleteAttribute("uv"); // better for performance
+geometry.deleteAttribute("normal"); // better for performance
+geometry.rotateX(-Math.PI * 0.5);
+
+// Material
+debugObject.colorWaterDeep = "#002b3d";
+debugObject.colorWaterSurface = "#66a8ff";
+debugObject.colorSand = "#ffe894";
+debugObject.colorGrass = "#85d534";
+debugObject.colorSnow = "#ffffff";
+debugObject.colorRock = "#bfbd8d";
+
+const uniforms = {
+  uPositionFrequency: new THREE.Uniform(0.2),
+  uStrength: new THREE.Uniform(2),
+  uWarpFrequency: new THREE.Uniform(5),
+  uWarpStrength: new THREE.Uniform(0.5),
+  uTime: new THREE.Uniform(0),
+
+  uColorWaterDeep: new THREE.Uniform(
+    new THREE.Color(debugObject.colorWaterDeep),
+  ),
+  uColorWaterSurface: new THREE.Uniform(
+    new THREE.Color(debugObject.colorWaterSurface),
+  ),
+  uColorSand: new THREE.Uniform(new THREE.Color(debugObject.colorSand)),
+  uColorGrass: new THREE.Uniform(new THREE.Color(debugObject.colorGrass)),
+  uColorSnow: new THREE.Uniform(new THREE.Color(debugObject.colorSnow)),
+  uColorRock: new THREE.Uniform(new THREE.Color(debugObject.colorRock)),
+};
+
+gui
+  .add(uniforms.uPositionFrequency, "value", 0, 1, 0.001)
+  .name("uPositionFrequency");
+gui.add(uniforms.uStrength, "value", 0, 10, 0.001).name("uStrength");
+gui.add(uniforms.uWarpFrequency, "value", 0, 10, 0.001).name("uWarpFrequency");
+gui.add(uniforms.uWarpStrength, "value", 0, 1, 0.001).name("uWarpStrength");
+
+gui.addColor(debugObject, "colorWaterDeep").onChange(() => {
+  uniforms.uColorWaterDeep.value.set(debugObject.colorWaterDeep);
+});
+gui.addColor(debugObject, "colorWaterSurface").onChange(() => {
+  uniforms.uColorWaterSurface.value.set(debugObject.colorWaterSurface);
+});
+gui.addColor(debugObject, "colorSand").onChange(() => {
+  uniforms.uColorSand.value.set(debugObject.colorSand);
+});
+gui.addColor(debugObject, "colorGrass").onChange(() => {
+  uniforms.uColorGrass.value.set(debugObject.colorGrass);
+});
+gui.addColor(debugObject, "colorSnow").onChange(() => {
+  uniforms.uColorSnow.value.set(debugObject.colorSnow);
+});
+gui.addColor(debugObject, "colorRock").onChange(() => {
+  uniforms.uColorRock.value.set(debugObject.colorRock);
+});
+
+const material = new CustomShaderMaterial({
+  // CSM
+  baseMaterial: THREE.MeshStandardMaterial,
+  vertexShader: terrainVertexShader,
+  fragmentShader: terrainFragmentShader,
+  uniforms,
+
+  // MeshStandardMaterial
+  metalness: 0,
+  roughness: 0.5,
+  color: "#85d534",
+});
+
+const depthMaterial = new CustomShaderMaterial({
+  // CSM
+  baseMaterial: THREE.MeshDepthMaterial,
+  vertexShader: terrainVertexShader,
+  uniforms,
+
+  // MeshDepthMaterial
+  depthPacking: THREE.RGBADepthPacking,
+});
+
+// Mesh
+const terrain = new THREE.Mesh(geometry, material);
+terrain.castShadow = true;
+terrain.receiveShadow = true;
+terrain.customDepthMaterial = depthMaterial;
+scene.add(terrain);
+
+/**
+ * Water
+ */
+const water = new THREE.Mesh(
+  new THREE.PlaneGeometry(10, 10, 1, 1),
+  new THREE.MeshPhysicalMaterial({
+    transmission: 1,
+    roughness: 0.3,
+  }),
 );
-scene.add(placeholder);
+water.rotation.x = -Math.PI * 0.5;
+water.position.y = -0.1;
+scene.add(water);
+
+/**
+ * Board
+ */
+// Brushes
+const boardFill = new Brush(new THREE.BoxGeometry(11, 2, 11));
+const boardHole = new Brush(new THREE.BoxGeometry(10, 2.1, 10));
+/* // If we want to move brush before cutting. Update of matrix needs to be done directly
+ * boardHole.position.y = 0.2;
+ * boardHole.updateMatrixWorld(); */
+boardHole.material.color.set("red");
+
+// Evaluate
+const evaluator = new Evaluator();
+const board = evaluator.evaluate(boardFill, boardHole, SUBTRACTION);
+board.geometry.clearGroups(); // to remove multiple materials for multiple brushes.
+board.material = new THREE.MeshStandardMaterial({
+  color: "#ffffff",
+  metalness: 0,
+  roughness: 0.3,
+});
+board.castShadow = true;
+board.receiveShadow = true;
+scene.add(board);
 
 /**
  * Lights
@@ -117,6 +242,8 @@ const clock = new THREE.Timer();
 const tick = () => {
   clock.update();
   const elapsedTime = clock.getElapsed();
+
+  material.uniforms.uTime.value = elapsedTime;
 
   // Update controls
   controls.update();
