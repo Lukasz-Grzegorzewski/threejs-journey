@@ -1,5 +1,14 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import Stats from "stats.js";
+import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
+
+/**
+ * Stats
+ */
+const stats = new Stats();
+stats.showPanel(0);
+document.body.appendChild(stats.dom);
 
 /**
  * Base
@@ -60,13 +69,13 @@ controls.enableDamping = true;
  */
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas,
-  powerPreference: "high-performance",
-  antialias: true,
+  powerPreference: "high-performance", // if dedicated GPU is available, it will use it
+  antialias: true, // delete if not needed
 });
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.setSize(sizes.width, sizes.height);
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 /**
  * Test meshes
@@ -124,6 +133,8 @@ scene.add(directionalLight);
 const clock = new THREE.Timer();
 
 const tick = () => {
+  stats.begin();
+
   clock.update();
   const elapsedTime = clock.getElapsed();
 
@@ -138,6 +149,8 @@ const tick = () => {
 
   // Call tick again on the next frame
   window.requestAnimationFrame(tick);
+
+  stats.end();
 };
 
 tick();
@@ -154,66 +167,68 @@ tick();
 // cube.geometry.dispose()
 // cube.material.dispose()
 
-// // Tip 10
-// directionalLight.shadow.camera.top = 3
-// directionalLight.shadow.camera.right = 6
-// directionalLight.shadow.camera.left = - 6
-// directionalLight.shadow.camera.bottom = - 3
-// directionalLight.shadow.camera.far = 10
-// directionalLight.shadow.mapSize.set(1024, 1024)
+// Tip 10 // camera space limited where are the objects.
+directionalLight.shadow.camera.top = 3;
+directionalLight.shadow.camera.right = 6;
+directionalLight.shadow.camera.left = -6;
+directionalLight.shadow.camera.bottom = -3;
+directionalLight.shadow.camera.far = 10;
+directionalLight.shadow.mapSize.set(1024, 1024); // quality of shadows
 
-// const cameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
-// scene.add(cameraHelper)
+const cameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+scene.add(cameraHelper);
 
-// // Tip 11
-// cube.castShadow = true
-// cube.receiveShadow = false
+// Tip 11
+cube.castShadow = true;
+cube.receiveShadow = false;
 
-// torusKnot.castShadow = true
-// torusKnot.receiveShadow = false
+torusKnot.castShadow = true;
+torusKnot.receiveShadow = false;
 
-// sphere.castShadow = true
-// sphere.receiveShadow = false
+sphere.castShadow = true;
+sphere.receiveShadow = false;
 
-// floor.castShadow = false
-// floor.receiveShadow = true
+floor.castShadow = false;
+floor.receiveShadow = true;
 
-// // Tip 12
-// renderer.shadowMap.autoUpdate = false
-// renderer.shadowMap.needsUpdate = true
+// Tip 12
+renderer.shadowMap.autoUpdate = false; // shadows stop updating (not moving)
+renderer.shadowMap.needsUpdate = true; // first shadow render
 
-// // Tip 18
-// for(let i = 0; i < 50; i++)
-// {
-//     const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
+// // Tip 18 // Merge Geometries to create one object so its painted at once and not one by one
+// const geometries = [];
 
-//     const material = new THREE.MeshNormalMaterial()
+// for (let i = 0; i < 50; i++) {
+//   const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
 
-//     const mesh = new THREE.Mesh(geometry, material)
-//     mesh.position.x = (Math.random() - 0.5) * 10
-//     mesh.position.y = (Math.random() - 0.5) * 10
-//     mesh.position.z = (Math.random() - 0.5) * 10
-//     mesh.rotation.x = (Math.random() - 0.5) * Math.PI * 2
-//     mesh.rotation.y = (Math.random() - 0.5) * Math.PI * 2
+//   geometry.rotateX((Math.random() - 0.5) * Math.PI * 2);
+//   geometry.rotateY((Math.random() - 0.5) * Math.PI * 2);
 
-//     scene.add(mesh)
+//   geometry.translate(
+//     (Math.random() - 0.5) * 10,
+//     (Math.random() - 0.5) * 10,
+//     (Math.random() - 0.5) * 10,
+//   );
+//   geometries.push(geometry);
 // }
+// const mergedGeometries = BufferGeometryUtils.mergeGeometries(geometries);
+// const material = new THREE.MeshNormalMaterial();
+// const mesh = new THREE.Mesh(mergedGeometries, material);
+// scene.add(mesh);
 
 // // Tip 19
-// for(let i = 0; i < 50; i++)
-// {
-//     const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
+// const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+// const material = new THREE.MeshNormalMaterial();
 
-//     const material = new THREE.MeshNormalMaterial()
+// for (let i = 0; i < 50; i++) {
+//   const mesh = new THREE.Mesh(geometry, material);
+//   mesh.position.x = (Math.random() - 0.5) * 10;
+//   mesh.position.y = (Math.random() - 0.5) * 10;
+//   mesh.position.z = (Math.random() - 0.5) * 10;
+//   mesh.rotation.x = (Math.random() - 0.5) * Math.PI * 2;
+//   mesh.rotation.y = (Math.random() - 0.5) * Math.PI * 2;
 
-//     const mesh = new THREE.Mesh(geometry, material)
-//     mesh.position.x = (Math.random() - 0.5) * 10
-//     mesh.position.y = (Math.random() - 0.5) * 10
-//     mesh.position.z = (Math.random() - 0.5) * 10
-//     mesh.rotation.x = (Math.random() - 0.5) * Math.PI * 2
-//     mesh.rotation.y = (Math.random() - 0.5) * Math.PI * 2
-
-//     scene.add(mesh)
+//   scene.add(mesh);
 // }
 
 // // Tip 20
@@ -233,83 +248,120 @@ tick();
 //     scene.add(mesh)
 // }
 
-// // Tip 22
-// const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
+// Tip 22
+const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
 
-// const material = new THREE.MeshNormalMaterial()
+const material = new THREE.MeshNormalMaterial();
 
-// for(let i = 0; i < 50; i++)
-// {
-//     const mesh = new THREE.Mesh(geometry, material)
-//     mesh.position.x = (Math.random() - 0.5) * 10
-//     mesh.position.y = (Math.random() - 0.5) * 10
-//     mesh.position.z = (Math.random() - 0.5) * 10
-//     mesh.rotation.x = (Math.random() - 0.5) * Math.PI * 2
-//     mesh.rotation.y = (Math.random() - 0.5) * Math.PI * 2
+const mesh = new THREE.InstancedMesh(geometry, material, 50);
+mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(mesh);
 
-//     scene.add(mesh)
-// }
+for (let i = 0; i < 50; i++) {
+  const position = new THREE.Vector3(
+    (Math.random() - 0.5) * 10,
+    (Math.random() - 0.5) * 10,
+    (Math.random() - 0.5) * 10,
+  );
+
+  const quaternion = new THREE.Quaternion();
+  quaternion.setFromEuler(
+    new THREE.Euler(
+      (Math.random() - 0.5) * Math.PI * 2,
+      (Math.random() - 0.5) * Math.PI * 2,
+      0,
+    ),
+  );
+
+  const matrix = new THREE.Matrix4();
+  matrix.makeRotationFromQuaternion(quaternion);
+  matrix.setPosition(position);
+
+  mesh.setMatrixAt(i, matrix);
+
+  // const mesh = new THREE.Mesh(geometry, material);
+  // mesh.position.x = (Math.random() - 0.5) * 10;
+  // mesh.position.y = (Math.random() - 0.5) * 10;
+  // mesh.position.z = (Math.random() - 0.5) * 10;
+  // mesh.rotation.x = (Math.random() - 0.5) * Math.PI * 2;
+  // mesh.rotation.y = (Math.random() - 0.5) * Math.PI * 2;
+}
 
 // // Tip 29
 // renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
-// // Tip 31, 32, 34 and 35
-// const shaderGeometry = new THREE.PlaneGeometry(10, 10, 256, 256)
+// Tip 31, 32, 34 and 35
+const shaderGeometry = new THREE.PlaneGeometry(10, 10, 256, 256);
 
-// const shaderMaterial = new THREE.ShaderMaterial({
-//     uniforms:
-//     {
-//         uDisplacementTexture: { value: displacementTexture },
-//         uDisplacementStrength: { value: 1.5 }
-//     },
-//     vertexShader: `
-//         uniform sampler2D uDisplacementTexture;
-//         uniform float uDisplacementStrength;
+const shaderMaterial = new THREE.ShaderMaterial({
+  precision: "lowp", // low precision if no problem with quality
+  uniforms: {
+    uDisplacementTexture: { value: displacementTexture },
+    // uDisplacementStrength: { value: 1.5 },
+  },
+  defines: { UDISPLACEMENT_STRENGTH: 1.5 },
+  vertexShader: `
+    // #define UDISPLACEMENT_STRENGTH 1.5
 
-//         varying vec2 vUv;
+    uniform sampler2D uDisplacementTexture;
+    // uniform float uDisplacementStrength;
 
-//         void main()
-//         {
-//             vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+    // varying vec2 vUv;
+    varying vec3 vColor;
 
-//             float elevation = texture2D(uDisplacementTexture, uv).r;
-//             if(elevation < 0.5)
-//             {
-//                 elevation = 0.5;
-//             }
+    void main()
+    {
+      // Position
+      vec4 modelPosition = modelMatrix * vec4(position, 1.0);
 
-//             modelPosition.y += elevation * uDisplacementStrength;
+      float elevation = texture2D(uDisplacementTexture, uv).r;
+      // elevation = clamp(elevation, 0.5, 1.0);
+      // if(elevation < 0.5)
+      // {
+      //     elevation = 0.5;
+      // }
 
-//             gl_Position = projectionMatrix * viewMatrix * modelPosition;
+      modelPosition.y += max(elevation, 0.5) * UDISPLACEMENT_STRENGTH;
+      gl_Position = projectionMatrix * viewMatrix * modelPosition;
 
-//             vUv = uv;
-//         }
-//     `,
-//     fragmentShader: `
-//         uniform sampler2D uDisplacementTexture;
+      // Color
+      float colorElevation = max(elevation, 0.25);
 
-//         varying vec2 vUv;
+      vec3 depthColor = vec3(1.0, 0.1, 0.1);
+      vec3 surfaceColor = vec3(0.1, 0.0, 0.5);
 
-//         void main()
-//         {
-//             float elevation = texture2D(uDisplacementTexture, vUv).r;
-//             if(elevation < 0.25)
-//             {
-//                 elevation = 0.25;
-//             }
+      // vec3 color = vec3(0.0);
+      // color.r += depthColor.r + (surfaceColor.r - depthColor.r) * colorElevation;
+      // color.g += depthColor.g + (surfaceColor.g - depthColor.g) * colorElevation;
+      // color.b += depthColor.b + (surfaceColor.b - depthColor.b) * colorElevation;
+      vec3 color =  mix(depthColor, surfaceColor, colorElevation);
 
-//             vec3 depthColor = vec3(1.0, 0.1, 0.1);
-//             vec3 surfaceColor = vec3(0.1, 0.0, 0.5);
-//             vec3 finalColor = vec3(0.0);
-//             finalColor.r += depthColor.r + (surfaceColor.r - depthColor.r) * elevation;
-//             finalColor.g += depthColor.g + (surfaceColor.g - depthColor.g) * elevation;
-//             finalColor.b += depthColor.b + (surfaceColor.b - depthColor.b) * elevation;
+      // Varying
+      // vUv = uv;
+      vColor = color;
+    }
+    `,
+  fragmentShader: `
+    uniform sampler2D uDisplacementTexture;
 
-//             gl_FragColor = vec4(finalColor, 1.0);
-//         }
-//     `
-// })
+    // varying vec2 vUv;
+    varying vec3 vColor;
 
-// const shaderMesh = new THREE.Mesh(shaderGeometry, shaderMaterial)
-// shaderMesh.rotation.x = - Math.PI * 0.5
-// scene.add(shaderMesh)
+    void main()
+    {
+      // float elevation = texture2D(uDisplacementTexture, vUv).r;
+
+      // elevation = max(elevation, 0.25);
+      // if(elevation < 0.25)
+      // {
+      //     elevation = 0.25;
+      // }
+
+      gl_FragColor = vec4(vColor, 1.0);
+    }
+  `,
+});
+
+const shaderMesh = new THREE.Mesh(shaderGeometry, shaderMaterial);
+shaderMesh.rotation.x = -Math.PI * 0.5;
+scene.add(shaderMesh);
