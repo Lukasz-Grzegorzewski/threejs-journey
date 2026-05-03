@@ -1,12 +1,28 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { gsap } from "gsap";
 
 /**
  * Loaders
  */
-const gltfLoader = new GLTFLoader();
-const cubeTextureLoader = new THREE.CubeTextureLoader();
+const loadingBar = document.querySelector(".loading-bar");
+const loadingMenager = new THREE.LoadingManager(
+  () => {
+    gsap.delayedCall(0.7, () => {
+      gsap.to(overlayMaterial.uniforms.uAlpha, { duration: 3, value: 0 });
+      loadingBar.style.transform = ``;
+      loadingBar.classList.add("ended");
+    });
+  },
+  (itemUrl, itemsLoaded, itemsTotal) => {
+    const progresRatio = itemsLoaded / itemsTotal;
+    loadingBar.style.transform = `scaleX(${progresRatio})`;
+  },
+);
+
+const gltfLoader = new GLTFLoader(loadingMenager);
+const cubeTextureLoader = new THREE.CubeTextureLoader(loadingMenager);
 
 /**
  * Base
@@ -19,6 +35,36 @@ const canvas = document.querySelector("canvas.webgl");
 
 // Scene
 const scene = new THREE.Scene();
+
+/**
+ * Overlay
+ */
+
+const overlayGeometry = new THREE.PlaneGeometry(2, 2, 1, 1);
+const overlayMaterial = new THREE.ShaderMaterial({
+  transparent: true,
+  uniforms: {
+    uAlpha: { value: 1 },
+  },
+  vertexShader: `
+    void main()
+    {
+      gl_Position = vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float uAlpha;
+
+    void main()
+    {
+      gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
+    }
+  `,
+});
+
+const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial);
+// overlay.position.set(0, 0, -1);
+scene.add(overlay);
 
 /**
  * Update all materials
@@ -129,7 +175,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.toneMapping = THREE.ReinhardToneMapping;
 renderer.toneMappingExposure = 3;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
