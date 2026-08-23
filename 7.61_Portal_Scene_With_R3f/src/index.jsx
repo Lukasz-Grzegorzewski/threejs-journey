@@ -7,6 +7,7 @@ const root = ReactDOM.createRoot(document.querySelector("#root"));
 
 root.render(
   <Canvas
+    flat // removing toneMapping. Tone maping already there when baking in Blender
     camera={{
       fov: 45,
       near: 0.1,
