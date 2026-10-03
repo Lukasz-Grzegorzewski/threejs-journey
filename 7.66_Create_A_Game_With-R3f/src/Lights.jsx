@@ -1,9 +1,21 @@
+import { useFrame } from "@react-three/fiber";
+import { useRef } from "react";
+
 export default function Lights() {
+  const lightRef = useRef();
+
+  useFrame((state) => {
+    lightRef.current.position.z = state.camera.position.z + 2 - 4;
+    lightRef.current.target.position.z = state.camera.position.z - 6;
+    lightRef.current.target.updateMatrixWorld();
+  });
+
   return (
     <>
       <directionalLight
+        ref={lightRef}
         castShadow
-        position={[4, 4, 1]}
+        position={[4, 4, 3]}
         intensity={4.5}
         shadow-mapSize={[1024, 1024]}
         shadow-camera-near={1}

@@ -1,32 +1,33 @@
 import { OrbitControls } from "@react-three/drei";
+import { Physics } from "@react-three/rapier";
 import Lights from "./Lights.jsx";
+import Level, { BlockSpinner } from "./Level.jsx";
+import Player from "./Player.jsx";
+import { useMemo } from "react";
+import useGame from "./stores/useGame.js";
 
 export default function Experience() {
+  const blocksCount = useGame((state) => state.blocksCount);
+  const blocksSeed = useGame((state) => state.blocksSeed);
+
+  const debug = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.has("debug");
+  }, []);
+
   return (
     <>
-      <OrbitControls makeDefault />
+      <color args={["#bdedfc"]} attach="background" />
+      {debug && <OrbitControls makeDefault />}
 
-      <Lights />
+      <Physics debug={debug}>
+        <Lights />
 
-      <mesh castShadow position-x={-2}>
-        <sphereGeometry />
-        <meshStandardMaterial color="orange" />
-      </mesh>
+        <Level count={blocksCount} seed={blocksSeed} />
 
-      <mesh castShadow position-x={2} scale={1.5}>
-        <boxGeometry />
-        <meshStandardMaterial color="mediumpurple" />
-      </mesh>
-
-      <mesh
-        receiveShadow
-        position-y={-1}
-        rotation-x={-Math.PI * 0.5}
-        scale={10}
-      >
-        <planeGeometry />
-        <meshStandardMaterial color="greenyellow" />
-      </mesh>
+        <Player />
+      </Physics>
     </>
   );
 }
